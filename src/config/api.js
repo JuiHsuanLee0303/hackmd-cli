@@ -1,4 +1,8 @@
 import Conf from "conf";
+import dotenv from "dotenv";
+
+// Load environment variables from .env file
+dotenv.config();
 
 const config = new Conf({
   projectName: "hackmd-cli",
@@ -7,7 +11,7 @@ const config = new Conf({
 export const API_BASE_URL = "https://api.hackmd.io/v1";
 
 export function getToken() {
-  return config.get("token");
+  return process.env.HACKMD_API_TOKEN || config.get("token");
 }
 
 export function setToken(token) {

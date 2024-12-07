@@ -64,6 +64,11 @@ api.interceptors.response.use(
   }
 );
 
+export async function getMe() {
+  const response = await api.get("/me");
+  return response.data;
+}
+
 export async function getNotes() {
   const response = await api.get("/notes");
   return response.data;
@@ -89,6 +94,7 @@ export async function deleteNote(noteId) {
 }
 
 export default {
+  getMe,
   getNotes,
   getNote,
   createNote,

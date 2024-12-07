@@ -13,6 +13,8 @@ const packageJson = JSON.parse(
 
 import {
   login,
+  config,
+  logout,
   list,
   fetch,
   newNote,
@@ -32,9 +34,12 @@ program
   .version(packageJson.version)
   .description("HackMD CLI Tool");
 
-// Basic commands
+// Auth commands
 program.command("login").description("Login to HackMD").action(login);
+program.command("config").description("Show user information").action(config);
+program.command("logout").description("Logout from HackMD").action(logout);
 
+// Basic commands
 program
   .command("list")
   .description("List notes")
@@ -95,16 +100,19 @@ program
   .description("Initialize a local HackMD repository")
   .action(init);
 
-program
+const remoteCommand = program
   .command("remote")
   .description("Manage remote notes")
-  .option("-v", "Show detailed information")
+  .option("-v, --verbose", "Show detailed information")
+  .action((options) => remote.list(options));
+
+remoteCommand
   .command("add <name> <note-id>")
   .description("Add a remote note")
   .action(remote.add);
 
-program
-  .command("remote remove <name>")
+remoteCommand
+  .command("remove <name>")
   .description("Remove a remote note")
   .action(remote.remove);
 

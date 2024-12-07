@@ -1,90 +1,121 @@
 import chalk from "chalk";
+import stringWidth from "string-width";
 import api from "../utils/api.js";
 
-function formatDate(dateString) {
-  return new Date(dateString).toLocaleString();
+// 截断文本的辅助函数
+function truncateText(text, maxLength = 50) {
+  if (!text) return "";
+  let width = 0;
+  let result = "";
+  const chars = [...text];
+
+  for (const char of chars) {
+    const charWidth = stringWidth(char);
+    if (width + charWidth > maxLength) {
+      return result + "...";
+    }
+    width += charWidth;
+    result += char;
+  }
+
+  return result;
 }
 
-function padEnd(str, length) {
-  return String(str).padEnd(length);
-}
-
-// Remove ANSI color codes
-function stripColor(str) {
+// 移除 ANSI 颜色代码以计算实际长度
+function stripAnsi(str) {
+  if (!str) return "";
   return str.replace(/\x1B\[\d+m/g, "");
 }
 
-function getColumnWidths(notes, options) {
+// 获取表格列宽
+function getColumnWidths(notes, selectedFields) {
   const widths = {
-    title: 0,
-    id: 0,
-    author: 0,
-    created: 0,
-    modified: 0,
-    read: 0,
-    write: 0,
-    comment: 0,
+    title: Math.max(4, stringWidth("Title")), // "Title" 的长度
+    content: Math.max(7, stringWidth("Content")), // "Content" 的长度
+    author: Math.max(6, stringWidth("Author")), // "Author" 的长度
+    created: Math.max(7, stringWidth("Created")), // "Created" 的长度
+    modified: Math.max(8, stringWidth("Modified")), // "Modified" 的长度
+    id: Math.max(2, stringWidth("ID")), // "ID" 的���度
+    read: Math.max(4, stringWidth("Read")), // "Read" 的长度
+    write: Math.max(5, stringWidth("Write")), // "Write" 的长度
+    comment: Math.max(7, stringWidth("Comment")), // "Comment" 的长度
   };
 
   notes.forEach((note) => {
-    if (options.title || !Object.keys(options).length) {
-      widths.title = Math.max(widths.title, note.title.length);
-    }
-    if (options.id || !Object.keys(options).length) {
-      widths.id = Math.max(widths.id, note.id.length);
-    }
-    if (options.author) {
-      widths.author = Math.max(
-        widths.author,
-        (note.user?.name || "Anonymous").length
+    if (selectedFields.includes("title")) {
+      widths.title = Math.max(
+        widths.title,
+        stringWidth(truncateText(note.title || ""))
       );
     }
-    if (options.created) {
+    if (selectedFields.includes("content")) {
+      widths.content = Math.max(
+        widths.content,
+        stringWidth(truncateText(note.content || "", 100))
+      );
+    }
+    if (selectedFields.includes("author")) {
+      widths.author = Math.max(widths.author, stringWidth(note.userPath || ""));
+    }
+    if (selectedFields.includes("created")) {
       widths.created = Math.max(
         widths.created,
-        formatDate(note.createdAt).length
+        stringWidth(new Date(note.createdAt || Date.now()).toLocaleString())
       );
     }
-    if (options.modified) {
+    if (selectedFields.includes("modified")) {
       widths.modified = Math.max(
         widths.modified,
-        formatDate(note.lastChangedAt).length
+        stringWidth(new Date(note.lastChangedAt || Date.now()).toLocaleString())
       );
     }
-    if (options.read) {
-      widths.read = Math.max(widths.read, note.readPermission.length);
+    if (selectedFields.includes("id")) {
+      widths.id = Math.max(widths.id, stringWidth(note.id || ""));
     }
-    if (options.write) {
-      widths.write = Math.max(widths.write, note.writePermission.length);
+    if (selectedFields.includes("read")) {
+      widths.read = Math.max(
+        widths.read,
+        stringWidth(`Read: ${note.readPermission || ""}`)
+      );
     }
-    if (options.comment) {
-      widths.comment = Math.max(widths.comment, note.commentPermission.length);
+    if (selectedFields.includes("write")) {
+      widths.write = Math.max(
+        widths.write,
+        stringWidth(`Write: ${note.writePermission || ""}`)
+      );
+    }
+    if (selectedFields.includes("comment")) {
+      widths.comment = Math.max(
+        widths.comment,
+        stringWidth(`Comment: ${note.commentPermission || ""}`)
+      );
     }
   });
-
-  // Add padding and label lengths
-  if (options.title || !Object.keys(options).length)
-    widths.title = Math.max(widths.title + 2, "Title".length + 2);
-  if (options.id || !Object.keys(options).length)
-    widths.id = Math.max(widths.id + 2, "ID".length + 2);
-  if (options.author)
-    widths.author = Math.max(widths.author + 2, "Author".length + 2);
-  if (options.created)
-    widths.created = Math.max(widths.created + 2, "Created".length + 2);
-  if (options.modified)
-    widths.modified = Math.max(widths.modified + 2, "Modified".length + 2);
-  if (options.read) widths.read = Math.max(widths.read + 2, "Read".length + 2);
-  if (options.write)
-    widths.write = Math.max(widths.write + 2, "Write".length + 2);
-  if (options.comment)
-    widths.comment = Math.max(widths.comment + 2, "Comment".length + 2);
 
   return widths;
 }
 
+// 填充空格使文本对齐
+function padText(text, width, align = "left") {
+  const textWidth = stringWidth(stripAnsi(text));
+  const padding = width - textWidth;
+  if (padding <= 0) return text;
+
+  if (align === "right") {
+    return " ".repeat(padding) + text;
+  } else if (align === "center") {
+    const leftPad = Math.floor(padding / 2);
+    const rightPad = padding - leftPad;
+    return " ".repeat(leftPad) + text + " ".repeat(rightPad);
+  } else {
+    return text + " ".repeat(padding);
+  }
+}
+
 export default async function list(options) {
   try {
-    const notes = await api.getNotes();
+    const response = await api.getNotes();
+    const notes = Array.isArray(response) ? response : [];
 
     if (notes.length === 0) {
       console.log(chalk.yellow("No notes found"));
@@ -94,97 +125,173 @@ export default async function list(options) {
     if (options.verbose) {
       notes.forEach((note) => {
         console.log(chalk.cyan("\nNote Details:"));
-        console.log(chalk.white("Title:"), note.title);
-        console.log(chalk.white("ID:"), note.id);
-        console.log(chalk.white("Author:"), note.user?.name || "Anonymous");
-        console.log(chalk.white("Created:"), formatDate(note.createdAt));
-        console.log(
-          chalk.white("Last Modified:"),
-          formatDate(note.lastChangedAt)
-        );
-        console.log(chalk.white("Read Permission:"), note.readPermission);
-        console.log(chalk.white("Write Permission:"), note.writePermission);
-        console.log(chalk.white("Comment Permission:"), note.commentPermission);
+        if (options.title || !Object.keys(options).length) {
+          console.log(chalk.white("Title:"), truncateText(note.title || ""));
+        }
+        if (options.content) {
+          console.log(
+            chalk.white("Content:"),
+            truncateText(note.content || "", 100)
+          );
+        }
+        if (options.author) {
+          console.log(chalk.white("Author:"), note.userPath || "");
+        }
+        if (options.created) {
+          console.log(
+            chalk.white("Created:"),
+            new Date(note.createdAt || Date.now()).toLocaleString()
+          );
+        }
+        if (options.modified) {
+          console.log(
+            chalk.white("Modified:"),
+            new Date(note.lastChangedAt || Date.now()).toLocaleString()
+          );
+        }
+        if (options.id) {
+          console.log(chalk.white("ID:"), note.id || "");
+        }
+        if (options.read) {
+          console.log(
+            chalk.white("Read Permission:"),
+            note.readPermission || ""
+          );
+        }
+        if (options.write) {
+          console.log(
+            chalk.white("Write Permission:"),
+            note.writePermission || ""
+          );
+        }
+        if (options.comment) {
+          console.log(
+            chalk.white("Comment Permission:"),
+            note.commentPermission || ""
+          );
+        }
         console.log(chalk.gray("---"));
       });
-      return;
-    }
+    } else {
+      const selectedFields = [];
+      if (options.title || !Object.keys(options).length)
+        selectedFields.push("title");
+      if (options.content) selectedFields.push("content");
+      if (options.author) selectedFields.push("author");
+      if (options.created) selectedFields.push("created");
+      if (options.modified) selectedFields.push("modified");
+      if (options.id) selectedFields.push("id");
+      if (options.read) selectedFields.push("read");
+      if (options.write) selectedFields.push("write");
+      if (options.comment) selectedFields.push("comment");
 
-    const widths = getColumnWidths(notes, options);
-    const columns = [];
-    const separator = "  ";
+      const widths = getColumnWidths(notes, selectedFields);
 
-    // Build header
-    if (options.title || !Object.keys(options).length) {
-      columns.push(chalk.cyan(padEnd("Title", widths.title)));
-    }
-    if (options.id || !Object.keys(options).length) {
-      columns.push(chalk.cyan(padEnd("ID", widths.id)));
-    }
-    if (options.author) {
-      columns.push(chalk.cyan(padEnd("Author", widths.author)));
-    }
-    if (options.created) {
-      columns.push(chalk.cyan(padEnd("Created", widths.created)));
-    }
-    if (options.modified) {
-      columns.push(chalk.cyan(padEnd("Modified", widths.modified)));
-    }
-    if (options.read) {
-      columns.push(chalk.cyan(padEnd("Read", widths.read)));
-    }
-    if (options.write) {
-      columns.push(chalk.cyan(padEnd("Write", widths.write)));
-    }
-    if (options.comment) {
-      columns.push(chalk.cyan(padEnd("Comment", widths.comment)));
-    }
+      // 打印表头
+      const headers = [];
+      if (selectedFields.includes("title"))
+        headers.push(padText(chalk.cyan("Title"), widths.title));
+      if (selectedFields.includes("content"))
+        headers.push(padText(chalk.cyan("Content"), widths.content));
+      if (selectedFields.includes("author"))
+        headers.push(padText(chalk.cyan("Author"), widths.author));
+      if (selectedFields.includes("created"))
+        headers.push(padText(chalk.cyan("Created"), widths.created));
+      if (selectedFields.includes("modified"))
+        headers.push(padText(chalk.cyan("Modified"), widths.modified));
+      if (selectedFields.includes("id"))
+        headers.push(padText(chalk.cyan("ID"), widths.id));
+      if (selectedFields.includes("read"))
+        headers.push(padText(chalk.cyan("Read"), widths.read));
+      if (selectedFields.includes("write"))
+        headers.push(padText(chalk.cyan("Write"), widths.write));
+      if (selectedFields.includes("comment"))
+        headers.push(padText(chalk.cyan("Comment"), widths.comment));
 
-    // Print header
-    if (columns.length > 0) {
-      console.log(columns.join(separator));
-      console.log(
-        columns.map((col) => "-".repeat(stripColor(col).length)).join(separator)
+      console.log(headers.join(" │ "));
+
+      // 打印分隔线
+      const separators = selectedFields.map((field) =>
+        "─".repeat(widths[field])
       );
-    }
+      console.log(separators.join("─┼─"));
 
-    // Print rows
-    notes.forEach((note) => {
-      const row = [];
-      if (options.title || !Object.keys(options).length) {
-        row.push(chalk.white(padEnd(note.title, widths.title)));
-      }
-      if (options.id || !Object.keys(options).length) {
-        row.push(chalk.gray(padEnd(note.id, widths.id)));
-      }
-      if (options.author) {
-        row.push(
-          chalk.blue(padEnd(note.user?.name || "Anonymous", widths.author))
-        );
-      }
-      if (options.created) {
-        row.push(
-          chalk.yellow(padEnd(formatDate(note.createdAt), widths.created))
-        );
-      }
-      if (options.modified) {
-        row.push(
-          chalk.green(padEnd(formatDate(note.lastChangedAt), widths.modified))
-        );
-      }
-      if (options.read) {
-        row.push(chalk.magenta(padEnd(note.readPermission, widths.read)));
-      }
-      if (options.write) {
-        row.push(chalk.cyan(padEnd(note.writePermission, widths.write)));
-      }
-      if (options.comment) {
-        row.push(chalk.red(padEnd(note.commentPermission, widths.comment)));
-      }
-      console.log(row.join(separator));
-    });
+      // ���印数据行
+      notes.forEach((note) => {
+        const fields = [];
+        if (selectedFields.includes("title")) {
+          fields.push(
+            padText(chalk.white(truncateText(note.title || "")), widths.title)
+          );
+        }
+        if (selectedFields.includes("content")) {
+          fields.push(
+            padText(
+              chalk.white(truncateText(note.content || "", 100)),
+              widths.content
+            )
+          );
+        }
+        if (selectedFields.includes("author")) {
+          fields.push(padText(chalk.blue(note.userPath || ""), widths.author));
+        }
+        if (selectedFields.includes("created")) {
+          fields.push(
+            padText(
+              chalk.yellow(
+                new Date(note.createdAt || Date.now()).toLocaleString()
+              ),
+              widths.created
+            )
+          );
+        }
+        if (selectedFields.includes("modified")) {
+          fields.push(
+            padText(
+              chalk.green(
+                new Date(note.lastChangedAt || Date.now()).toLocaleString()
+              ),
+              widths.modified
+            )
+          );
+        }
+        if (selectedFields.includes("id")) {
+          fields.push(padText(chalk.gray(note.id || ""), widths.id));
+        }
+        if (selectedFields.includes("read")) {
+          fields.push(
+            padText(
+              chalk.magenta(`Read: ${note.readPermission || ""}`),
+              widths.read
+            )
+          );
+        }
+        if (selectedFields.includes("write")) {
+          fields.push(
+            padText(
+              chalk.cyan(`Write: ${note.writePermission || ""}`),
+              widths.write
+            )
+          );
+        }
+        if (selectedFields.includes("comment")) {
+          fields.push(
+            padText(
+              chalk.red(`Comment: ${note.commentPermission || ""}`),
+              widths.comment
+            )
+          );
+        }
+
+        console.log(fields.join(" │ "));
+      });
+    }
   } catch (error) {
     console.error(chalk.red("Error listing notes:"), error.message);
+    // 添加调试信息
+    if (error.response) {
+      console.error(chalk.gray("API Response:"), error.response.data);
+    }
     process.exit(1);
   }
 }

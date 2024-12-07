@@ -7,13 +7,15 @@ import {
 import api from "../utils/api.js";
 
 export async function add(name, noteId) {
+  console.log(chalk.cyan(`Adding remote '${name}' -> ${noteId}`));
   try {
     // Verify note exists
     await api.getNote(noteId);
+    console.log(chalk.green(`✓ Verified remote note '${noteId}'`));
 
     // Add remote
-    await addRemoteToLocal(name, noteId);
-    console.log(chalk.green(`✓ Added remote '${name}' -> ${noteId}`));
+    const normalizedName = await addRemoteToLocal(name, noteId);
+    console.log(chalk.green(`✓ Added remote '${normalizedName}' -> ${noteId}`));
   } catch (error) {
     console.error(chalk.red("Error adding remote:"), error.message);
     process.exit(1);

@@ -1,4 +1,6 @@
 export { default as login } from "./login.js";
+export { default as config } from "./config.js";
+export { default as logout } from "./logout.js";
 export { default as list } from "./list.js";
 export { default as fetch } from "./fetch.js";
 export { default as newNote } from "./new.js";
