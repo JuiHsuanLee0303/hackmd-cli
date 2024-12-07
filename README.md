@@ -48,6 +48,22 @@ hackmd export <note-id> -f <format> -o <output-path>
 hackmd export  # Select from cached notes
 ```
 
+### Synchronization
+
+```bash
+# Check for changes between local and remote notes
+hackmd sync
+
+# Pull remote changes to local cache
+hackmd sync --pull
+```
+
+The sync command will show:
+
+- New notes (exist remotely but not locally)
+- Modified notes (different content or timestamps)
+- Deleted notes (exist locally but not remotely)
+
 ### Note Creation Options
 
 When creating a new note, you can specify:
@@ -70,6 +86,7 @@ When exporting a note, you can specify:
 - **Authentication**: Secure API token management
 - **Note Management**: Create, read, update, and delete notes
 - **Local Caching**: Cache notes locally for faster access
+- **Synchronization**: Track and sync changes between local and remote notes
 - **Interactive Mode**: Select notes from a list when no ID is provided
 - **Export Options**: Export notes in different formats (Markdown, HTML, PDF)
 - **Permission Control**: Set read, write, and comment permissions when creating notes
@@ -86,6 +103,7 @@ When exporting a note, you can specify:
   - Missing authentication: Will prompt you to login
   - Invalid token: Will ask for a new token
   - Missing notes cache: Will suggest running `fetch --all`
+  - Sync conflicts: Will show detailed changes and suggest actions
 
 ## License
 
