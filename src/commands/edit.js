@@ -1,88 +1,110 @@
-import inquirer from "inquirer";
 import chalk from "chalk";
-import ora from "ora";
+import inquirer from "inquirer";
+import fs from "fs/promises";
 import api from "../utils/api.js";
-import noteCache from "../utils/cache.js";
 
-async function edit(noteId) {
+export default async function edit(noteId, options) {
   try {
-    // If no noteId provided, show selection
     if (!noteId) {
-      noteId = await noteCache.selectNote("Select note to edit:");
-    }
+      // Interactive mode: list notes and let user choose
+      const notes = await api.getNotes();
+      const choices = notes.map((note) => ({
+        name: `${note.title} (${note.id})`,
+        value: note.id,
+      }));
 
-    // Get note information
-    const spinner = ora("Fetching note...").start();
-    let note;
-
-    try {
-      note = await api.get(`/notes/${noteId}`);
-      spinner.succeed(chalk.green("Note fetched successfully!"));
-    } catch (error) {
-      spinner.fail(chalk.red("Failed to fetch note: " + error.message));
-      process.exit(1);
-    }
-
-    // Display current note information
-    console.log(chalk.cyan("\nCurrent Note:"));
-    console.log(chalk.gray(`Title: ${note.title}`));
-    console.log(
-      chalk.gray(
-        `Last Updated: ${new Date(note.lastChangeAt).toLocaleString()}`
-      )
-    );
-
-    // Ask for content to edit
-    const answers = await inquirer.prompt([
-      {
-        type: "input",
-        name: "title",
-        message: "Enter new title (press Enter to keep current):",
-        default: note.title,
-      },
-      {
-        type: "editor",
-        name: "content",
-        message: "Edit note content:",
-        default: note.content,
-      },
-    ]);
-
-    // If content hasn't changed, ask for confirmation
-    if (answers.title === note.title && answers.content === note.content) {
-      const confirm = await inquirer.prompt([
+      const { selectedNote } = await inquirer.prompt([
         {
-          type: "confirm",
-          name: "update",
-          message: "No changes detected. Update anyway?",
-          default: false,
+          type: "list",
+          name: "selectedNote",
+          message: "Select a note to edit:",
+          choices,
+        },
+      ]);
+      noteId = selectedNote;
+    }
+
+    // Get current note data
+    const note = await api.getNote(noteId);
+    let noteData = {};
+
+    if (options.file) {
+      // Edit from file
+      try {
+        const content = await fs.readFile(options.file, "utf8");
+        noteData.content = content;
+      } catch (error) {
+        throw new Error(`Failed to read file: ${error.message}`);
+      }
+    } else if (
+      !options.title &&
+      !options.content &&
+      !options.readPermission &&
+      !options.writePermission &&
+      !options.commentPermission
+    ) {
+      // Interactive mode
+      const answers = await inquirer.prompt([
+        {
+          type: "input",
+          name: "title",
+          message: "Enter new title (leave empty to keep current):",
+          default: note.title,
+        },
+        {
+          type: "editor",
+          name: "content",
+          message: "Edit content:",
+          default: note.content,
+        },
+        {
+          type: "list",
+          name: "readPermission",
+          message: "Select read permission:",
+          choices: ["owner", "signed_in", "guest"],
+          default: note.readPermission,
+        },
+        {
+          type: "list",
+          name: "writePermission",
+          message: "Select write permission:",
+          choices: ["owner", "signed_in"],
+          default: note.writePermission,
+        },
+        {
+          type: "list",
+          name: "commentPermission",
+          message: "Select comment permission:",
+          choices: ["disabled", "owner", "signed_in", "guest"],
+          default: note.commentPermission,
         },
       ]);
 
-      if (!confirm.update) {
-        console.log(chalk.yellow("Update cancelled"));
-        return;
-      }
+      noteData = answers;
     }
 
-    // Update note
-    spinner.text = "Updating note...";
-    spinner.start();
+    // Merge command line options
+    noteData = {
+      title: options.title || noteData.title || note.title,
+      content: options.content || noteData.content || note.content,
+      readPermission:
+        options.readPermission ||
+        noteData.readPermission ||
+        note.readPermission,
+      writePermission:
+        options.writePermission ||
+        noteData.writePermission ||
+        note.writePermission,
+      commentPermission:
+        options.commentPermission ||
+        noteData.commentPermission ||
+        note.commentPermission,
+    };
 
-    try {
-      await api.patch(`/notes/${noteId}`, {
-        title: answers.title,
-        content: answers.content,
-      });
-
-      spinner.succeed(chalk.green("Note updated successfully!"));
-    } catch (error) {
-      spinner.fail(chalk.red("Failed to update note: " + error.message));
-    }
+    await api.updateNote(noteId, noteData);
+    console.log(chalk.green("✓ Note updated successfully"));
   } catch (error) {
-    console.error(chalk.red("Error: " + error.message));
+    console.error(chalk.red("Error editing note:"), error.message);
     process.exit(1);
   }
 }
-
-export default edit;

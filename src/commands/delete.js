@@ -1,68 +1,50 @@
-import inquirer from "inquirer";
 import chalk from "chalk";
-import ora from "ora";
+import inquirer from "inquirer";
 import api from "../utils/api.js";
-import noteCache from "../utils/cache.js";
 
-async function deleteNote(noteId) {
+export default async function deleteNote(noteId) {
   try {
-    // If no noteId provided, show selection
     if (!noteId) {
-      noteId = await noteCache.selectNote("Select note to delete:");
+      // Interactive mode: list notes and let user choose
+      const notes = await api.getNotes();
+      const choices = notes.map((note) => ({
+        name: `${note.title} (${note.id})`,
+        value: note.id,
+      }));
+
+      const { selectedNote } = await inquirer.prompt([
+        {
+          type: "list",
+          name: "selectedNote",
+          message: "Select a note to delete:",
+          choices,
+        },
+      ]);
+      noteId = selectedNote;
     }
 
-    // Get note information
-    const spinner = ora("Fetching note...").start();
-    let note;
+    // Get note info for confirmation
+    const note = await api.getNote(noteId);
 
-    try {
-      note = await api.get(`/notes/${noteId}`);
-      spinner.succeed(chalk.green("Note fetched successfully!"));
-    } catch (error) {
-      spinner.fail(chalk.red("Failed to fetch note: " + error.message));
-      process.exit(1);
-    }
-
-    // Display note information and confirm deletion
-    console.log(chalk.cyan("\nNote to delete:"));
-    console.log(chalk.gray(`Title: ${note.title}`));
-    console.log(
-      chalk.gray(`Created: ${new Date(note.createdAt).toLocaleString()}`)
-    );
-
-    const confirm = await inquirer.prompt([
+    // Confirm deletion
+    const { confirm } = await inquirer.prompt([
       {
         type: "confirm",
-        name: "delete",
-        message:
-          "Are you sure you want to delete this note? This action cannot be undone!",
+        name: "confirm",
+        message: `Are you sure you want to delete note "${note.title}" (${note.id})?`,
         default: false,
       },
     ]);
 
-    if (!confirm.delete) {
-      console.log(chalk.yellow("Deletion cancelled"));
+    if (!confirm) {
+      console.log(chalk.yellow("Operation cancelled"));
       return;
     }
 
-    spinner.text = "Deleting note...";
-    spinner.start();
-
-    try {
-      await api.delete(`/notes/${noteId}`);
-      spinner.succeed(chalk.green("Note deleted successfully!"));
-
-      // Update cache after deletion
-      const notes = await noteCache.getNotes();
-      const updatedNotes = notes.filter((n) => n.id !== noteId);
-      await noteCache.saveNotes(updatedNotes);
-    } catch (error) {
-      spinner.fail(chalk.red("Failed to delete note: " + error.message));
-    }
+    await api.deleteNote(noteId);
+    console.log(chalk.green("✓ Note deleted successfully"));
   } catch (error) {
-    console.error(chalk.red("Error: " + error.message));
+    console.error(chalk.red("Error deleting note:"), error.message);
     process.exit(1);
   }
 }
-
-export default deleteNote;

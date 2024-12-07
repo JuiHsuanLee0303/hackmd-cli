@@ -1,4 +1,4 @@
-#! /usr/bin/env node
+#!/usr/bin/env node
 
 import { Command } from "commander";
 import { fileURLToPath } from "url";
@@ -11,82 +11,108 @@ const packageJson = JSON.parse(
   readFileSync(join(__dirname, "../package.json"), "utf8")
 );
 
-import login from "./commands/login.js";
-import list from "./commands/list.js";
-import create from "./commands/create.js";
-import edit from "./commands/edit.js";
-import deleteNote from "./commands/delete.js";
-import exportNote from "./commands/export.js";
-import fetchNote from "./commands/fetch.js";
-import sync from "./commands/sync.js";
-import remote from "./commands/remote.js";
+import {
+  login,
+  list,
+  fetch,
+  newNote,
+  edit,
+  deleteNote,
+  download,
+  init,
+  remote,
+  pull,
+  push,
+} from "./commands/index.js";
 
 const program = new Command();
 
-program.version(packageJson.version).description("HackMD CLI Tool");
-
-// Login command
 program
-  .command("login")
-  .description("Login to HackMD")
-  .option("-u, --username <username>", "Username")
-  .option("-p, --password <password>", "Password")
-  .action(login);
+  .name("hackmd")
+  .version(packageJson.version)
+  .description("HackMD CLI Tool");
 
-// Remote management
-program
-  .command("remote <action> [name] [url]")
-  .description("Manage remote sources")
-  .action(remote);
+// Basic commands
+program.command("login").description("Login to HackMD").action(login);
 
-// List cached notes
 program
   .command("list")
-  .description("List cached notes (run 'fetch --all' first if empty)")
+  .description("List notes")
+  .option("-v, --verbose", "Show detailed information")
+  .option("-t, --title", "Show title")
+  .option("-C, --content", "Show content")
+  .option("-a, --author", "Show author")
+  .option("-d, --created", "Show creation date")
+  .option("-m, --modified", "Show last modified date")
+  .option("-i, --id", "Show note ID")
+  .option("-r, --read", "Show read permission")
+  .option("-w, --write", "Show write permission")
+  .option("-c, --comment", "Show comment permission")
   .action(list);
 
-// Fetch notes
 program
   .command("fetch [note-id]")
   .description("Fetch notes from HackMD")
-  .option("-a, --all", "Fetch all notes")
-  .option("-r, --remote <remote>", "Remote source to fetch from", "origin")
-  .action(fetchNote);
+  .option("--all", "Fetch all notes")
+  .action(fetch);
 
-// Sync notes
-program
-  .command("sync")
-  .description("Check for changes between local and remote notes")
-  .option("-p, --pull", "Pull remote changes to local cache")
-  .option("-r, --remote <remote>", "Remote to sync with", "origin")
-  .action(sync);
-
-// Create note
 program
   .command("new")
   .description("Create new note")
   .option("-t, --title <title>", "Note title")
   .option("-C, --content <content>", "Note content")
-  .option("-r, --readPermission <readPermission>", "Read permission")
-  .option("-w, --writePermission <writePermission>", "Write permission")
-  .option("-c, --commentPermission <commentPermission>", "Comment permission")
-  .action(create);
+  .option("-r, --readPermission <permission>", "Read permission")
+  .option("-w, --writePermission <permission>", "Write permission")
+  .option("-c, --commentPermission <permission>", "Comment permission")
+  .option("-f, --file <filename>", "Create from local file")
+  .action(newNote);
 
-// Edit note
-program.command("edit [note-id]").description("Edit note").action(edit);
-
-// Delete note
 program
-  .command("delete [note-id]")
+  .command("edit [note-id]")
+  .description("Edit note")
+  .option("-t, --title <title>", "Note title")
+  .option("-C, --content <content>", "Note content")
+  .option("-r, --readPermission <permission>", "Read permission")
+  .option("-w, --writePermission <permission>", "Write permission")
+  .option("-c, --commentPermission <permission>", "Comment permission")
+  .option("-f, --file <filename>", "Edit from local file")
+  .action(edit);
+
+program
+  .command("delete <note-id>")
   .description("Delete note")
   .action(deleteNote);
 
-// Export note
 program
-  .command("export [note-id]")
-  .description("Export note")
-  .option("-f, --format <format>", "Export format (md/html/pdf)", "md")
+  .command("download <note-id>")
+  .description("Download note")
   .option("-o, --output <path>", "Output path")
-  .action(exportNote);
+  .action(download);
+
+// Remote sync commands
+program
+  .command("init")
+  .description("Initialize a local HackMD repository")
+  .action(init);
+
+program
+  .command("remote")
+  .description("Manage remote notes")
+  .option("-v", "Show detailed information")
+  .command("add <name> <note-id>")
+  .description("Add a remote note")
+  .action(remote.add);
+
+program
+  .command("remote remove <name>")
+  .description("Remove a remote note")
+  .action(remote.remove);
+
+program
+  .command("pull [name]")
+  .description("Pull notes from remote")
+  .action(pull);
+
+program.command("push [name]").description("Push notes to remote").action(push);
 
 program.parse(process.argv);

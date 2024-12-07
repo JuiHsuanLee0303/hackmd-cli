@@ -1,64 +1,76 @@
 import chalk from "chalk";
-import remoteManager from "../utils/remotes.js";
+import {
+  getRemotes,
+  addRemote as addRemoteToLocal,
+  removeRemote as removeRemoteFromLocal,
+} from "../utils/local.js";
+import api from "../utils/api.js";
 
-async function remote(action, name, url) {
+export async function add(name, noteId) {
   try {
-    switch (action) {
-      case "add":
-        if (!name || !url) {
-          console.error(
-            chalk.red(
-              "Error: Both name and URL are required for adding a remote"
-            )
-          );
-          console.log(chalk.cyan("\nUsage: hackmd remote add <name> <url>"));
-          process.exit(1);
-        }
-        await remoteManager.addRemote(name, url);
-        console.log(chalk.green(`Remote '${name}' added successfully`));
-        break;
+    // Verify note exists
+    await api.getNote(noteId);
 
-      case "remove":
-        if (!name) {
-          console.error(chalk.red("Error: Remote name is required"));
-          console.log(chalk.cyan("\nUsage: hackmd remote remove <name>"));
-          process.exit(1);
-        }
-        await remoteManager.removeRemote(name);
-        console.log(chalk.green(`Remote '${name}' removed successfully`));
-        break;
-
-      case "list":
-        const remotes = await remoteManager.getRemotes();
-        if (Object.keys(remotes).length === 0) {
-          console.log(chalk.yellow("No remotes configured"));
-          console.log(chalk.cyan("\nTo add a remote, use:"));
-          console.log(chalk.cyan("hackmd remote add <name> <url>"));
-          return;
-        }
-
-        console.log(chalk.cyan("\nConfigured remotes:"));
-        for (const [remoteName, remote] of Object.entries(remotes)) {
-          console.log(chalk.white(`\n${remoteName}`));
-          console.log(chalk.gray(`  URL: ${remote.url}`));
-          console.log(
-            chalk.gray(`  Added: ${new Date(remote.addedAt).toLocaleString()}`)
-          );
-        }
-        break;
-
-      default:
-        console.error(chalk.red(`Error: Unknown action '${action}'`));
-        console.log(chalk.cyan("\nAvailable actions:"));
-        console.log(chalk.cyan("  add <name> <url>    Add a new remote"));
-        console.log(chalk.cyan("  remove <name>       Remove a remote"));
-        console.log(chalk.cyan("  list                List all remotes"));
-        process.exit(1);
-    }
+    // Add remote
+    await addRemoteToLocal(name, noteId);
+    console.log(chalk.green(`✓ Added remote '${name}' -> ${noteId}`));
   } catch (error) {
-    console.error(chalk.red("Error:", error.message));
+    console.error(chalk.red("Error adding remote:"), error.message);
     process.exit(1);
   }
 }
 
-export default remote;
+export async function remove(name) {
+  try {
+    await removeRemoteFromLocal(name);
+    console.log(chalk.green(`✓ Removed remote '${name}'`));
+  } catch (error) {
+    console.error(chalk.red("Error removing remote:"), error.message);
+    process.exit(1);
+  }
+}
+
+export async function list(options) {
+  try {
+    const remotes = await getRemotes();
+
+    if (Object.keys(remotes).length === 0) {
+      console.log(chalk.yellow("No remotes found"));
+      return;
+    }
+
+    if (options.verbose) {
+      for (const [name, noteId] of Object.entries(remotes)) {
+        console.log(chalk.cyan("\nRemote Details:"));
+        console.log(chalk.white("Name:"), name);
+        console.log(chalk.white("Note ID:"), noteId);
+
+        try {
+          const note = await api.getNote(noteId);
+          console.log(chalk.white("Title:"), note.title);
+          console.log(
+            chalk.white("Last Modified:"),
+            new Date(note.lastChangedAt).toLocaleString()
+          );
+        } catch (error) {
+          console.log(chalk.red("Note details unavailable"));
+        }
+
+        console.log(chalk.gray("---"));
+      }
+    } else {
+      for (const [name, noteId] of Object.entries(remotes)) {
+        console.log(chalk.white(name), chalk.gray(`-> ${noteId}`));
+      }
+    }
+  } catch (error) {
+    console.error(chalk.red("Error listing remotes:"), error.message);
+    process.exit(1);
+  }
+}
+
+export default {
+  add,
+  remove,
+  list,
+};
