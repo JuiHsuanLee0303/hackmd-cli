@@ -2,7 +2,7 @@
 
 HackMD 的 CLI 工具，讓你可以直接從終端機管理你的筆記。
 
-[English](README.md)
+[README (English version)](README.md)
 
 ## 安裝
 
@@ -48,6 +48,12 @@ hackmd login
    hackmd list -v
    ```
 
+   - 限制列出筆記數量
+
+   ```bash
+   hackmd list -l <length>
+   ```
+
    - 列出筆記特定欄位為參數
      - `-t` 標題
      - `-C` 內容
@@ -57,17 +63,18 @@ hackmd login
      - `-i` ID
      - `-r` 閱讀權限
      - `-w` 寫入權限
-     - `-c` 評論權限
 
-2. 下載筆記
+   _若沒有指定欄位，則會列出標題、ID、創建時間、上次修改時間_
 
-   - 下載單一筆記
+2. 抓取筆記 ( 未來將會被移除，請改用 `hackmd list -v` )
+
+   - 抓取單一筆記
 
    ```bash
    hackmd fetch <note-id>
    ```
 
-   - 下載所有筆記
+   - 抓取所有筆記
 
    ```bash
    hackmd fetch --all

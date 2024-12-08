@@ -40,8 +40,7 @@ export default async function edit(noteId, options) {
       !options.title &&
       !options.content &&
       !options.readPermission &&
-      !options.writePermission &&
-      !options.commentPermission
+      !options.writePermission
     ) {
       // Interactive mode
       const answers = await inquirer.prompt([
@@ -71,13 +70,6 @@ export default async function edit(noteId, options) {
           choices: ["owner", "signed_in"],
           default: note.writePermission,
         },
-        {
-          type: "list",
-          name: "commentPermission",
-          message: "Select comment permission:",
-          choices: ["disabled", "owner", "signed_in", "guest"],
-          default: note.commentPermission,
-        },
       ]);
 
       noteData = answers;
@@ -95,10 +87,6 @@ export default async function edit(noteId, options) {
         options.writePermission ||
         noteData.writePermission ||
         note.writePermission,
-      commentPermission:
-        options.commentPermission ||
-        noteData.commentPermission ||
-        note.commentPermission,
     };
 
     await api.updateNote(noteId, noteData);

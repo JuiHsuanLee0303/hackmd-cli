@@ -52,7 +52,7 @@ program
   .option("-i, --id", "Show note ID")
   .option("-r, --read", "Show read permission")
   .option("-w, --write", "Show write permission")
-  .option("-c, --comment", "Show comment permission")
+  .option("-l, --length <length>", "The number of notes to show")
   .action(list);
 
 program
@@ -79,7 +79,6 @@ program
   .option("-C, --content <content>", "Note content")
   .option("-r, --readPermission <permission>", "Read permission")
   .option("-w, --writePermission <permission>", "Write permission")
-  .option("-c, --commentPermission <permission>", "Comment permission")
   .option("-f, --file <filename>", "Edit from local file")
   .action(edit);
 

@@ -2,6 +2,11 @@ import chalk from "chalk";
 import api from "../utils/api.js";
 
 export default async function fetch(noteId, options) {
+  console.log(
+    chalk.red(
+      "This command will be deprecated in the future. Please use `hackmd list -v` instead."
+    )
+  );
   try {
     if (options.all) {
       // Fetch all notes

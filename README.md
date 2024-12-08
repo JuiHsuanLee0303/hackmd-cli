@@ -2,7 +2,7 @@
 
 A command-line interface tool for HackMD that allows you to manage your notes directly from the terminal.
 
-[中文版](README_zh_TW.md)
+[中文版 README](README_zh_TW.md)
 
 ## Installation
 
@@ -48,6 +48,12 @@ hackmd login
    hackmd list -v
    ```
 
+   - Limit the number of notes listed
+
+   ```bash
+   hackmd list -l <length>
+   ```
+
    - List specific note fields using parameters
      - `-t` Title
      - `-C` Content
@@ -57,9 +63,10 @@ hackmd login
      - `-i` ID
      - `-r` Read permission
      - `-w` Write permission
-     - `-c` Comment permission
 
-2. Fetch Notes
+   _If no fields are specified, the title, ID, creation date, and last modified date will be listed._
+
+2. Fetch Notes ( This command will be deprecated in the future. Please use `hackmd list -v` instead. )
 
    - Fetch a single note
 
@@ -170,24 +177,3 @@ hackmd push <local-name>
 ```
 
 If no local name is specified, all local notes will be pushed.
-
-## Permissions
-
-The following permission levels are available:
-
-- Read Permission (`-r`):
-
-  - `owner`: Only the owner can read
-  - `signed_in`: Signed-in users can read
-  - `guest`: Anyone can read
-
-- Write Permission (`-w`):
-
-  - `owner`: Only the owner can write
-  - `signed_in`: Signed-in users can write
-
-- Comment Permission (`-c`):
-  - `disabled`: Comments disabled
-  - `owner`: Only the owner can comment
-  - `signed_in`: Signed-in users can comment
-  - `guest`: Anyone can comment
