@@ -41,20 +41,24 @@ export async function list(options) {
       return;
     }
 
+    // 獲取所有筆記的資料
+    const allNotes = await api.getNotes();
+    const notesMap = new Map(allNotes.map((note) => [note.id, note]));
+
     if (options.verbose) {
       for (const [name, noteId] of Object.entries(remotes)) {
         console.log(chalk.cyan("\nRemote Details:"));
         console.log(chalk.white("Name:"), name);
         console.log(chalk.white("Note ID:"), noteId);
 
-        try {
-          const note = await api.getNote(noteId);
+        const note = notesMap.get(noteId);
+        if (note) {
           console.log(chalk.white("Title:"), note.title);
           console.log(
             chalk.white("Last Modified:"),
             new Date(note.lastChangedAt).toLocaleString()
           );
-        } catch (error) {
+        } else {
           console.log(chalk.red("Note details unavailable"));
         }
 

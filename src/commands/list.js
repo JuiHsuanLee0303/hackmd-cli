@@ -132,84 +132,74 @@ export default async function list(options) {
     }
 
     if (options.verbose) {
-      // 在详细模式下获取每个笔记的完整内容
+      // 在详细模式下显示每个笔记的完整内容
       for (const note of notes) {
-        try {
-          // 获取完整的笔记内容
-          const fullNote = await api.getNote(note.id);
-          console.log(chalk.cyan("\nNote Details:"));
+        console.log(chalk.cyan("\nNote Details:"));
 
-          // 检查是否有任何选项被指定
-          const hasSpecificOptions =
-            options.title ||
-            options.content ||
-            options.author ||
-            options.created ||
-            options.modified ||
-            options.id ||
-            options.read ||
-            options.write;
+        // 检查是否有任何选项被指定
+        const hasSpecificOptions =
+          options.title ||
+          options.content ||
+          options.author ||
+          options.created ||
+          options.modified ||
+          options.id ||
+          options.read ||
+          options.write;
 
-          // 如果没有指定任何选项，显示默认字段
-          if (!hasSpecificOptions) {
-            console.log(chalk.white("Title:"), fullNote.title || "");
-            console.log(chalk.white("ID:"), fullNote.id || "");
+        // 如果没有指定任何选项，显示默认字段
+        if (!hasSpecificOptions) {
+          console.log(chalk.white("Title:"), note.title || "");
+          console.log(chalk.white("ID:"), note.id || "");
+          console.log(
+            chalk.white("Created:"),
+            new Date(note.createdAt || Date.now()).toLocaleString()
+          );
+          console.log(
+            chalk.white("Modified:"),
+            new Date(note.lastChangedAt || Date.now()).toLocaleString()
+          );
+        } else {
+          // 否则显示指定的字段
+          if (options.title) {
+            console.log(chalk.white("Title:"), note.title || "");
+          }
+          if (options.content) {
+            console.log(chalk.white("\nContent:"));
+            console.log(chalk.gray(note.content || ""));
+          }
+          if (options.author) {
+            console.log(chalk.white("Author:"), note.userPath || "");
+          }
+          if (options.created) {
             console.log(
               chalk.white("Created:"),
-              new Date(fullNote.createdAt || Date.now()).toLocaleString()
+              new Date(note.createdAt || Date.now()).toLocaleString()
             );
+          }
+          if (options.modified) {
             console.log(
               chalk.white("Modified:"),
-              new Date(fullNote.lastChangedAt || Date.now()).toLocaleString()
+              new Date(note.lastChangedAt || Date.now()).toLocaleString()
             );
-          } else {
-            // 否则显示指定的字段
-            if (options.title) {
-              console.log(chalk.white("Title:"), fullNote.title || "");
-            }
-            if (options.content) {
-              console.log(chalk.white("\nContent:"));
-              console.log(chalk.gray(fullNote.content || ""));
-            }
-            if (options.author) {
-              console.log(chalk.white("Author:"), fullNote.userPath || "");
-            }
-            if (options.created) {
-              console.log(
-                chalk.white("Created:"),
-                new Date(fullNote.createdAt || Date.now()).toLocaleString()
-              );
-            }
-            if (options.modified) {
-              console.log(
-                chalk.white("Modified:"),
-                new Date(fullNote.lastChangedAt || Date.now()).toLocaleString()
-              );
-            }
-            if (options.id) {
-              console.log(chalk.white("ID:"), fullNote.id || "");
-            }
-            if (options.read) {
-              console.log(
-                chalk.white("Read Permission:"),
-                fullNote.readPermission || ""
-              );
-            }
-            if (options.write) {
-              console.log(
-                chalk.white("Write Permission:"),
-                fullNote.writePermission || ""
-              );
-            }
           }
-          console.log(chalk.gray("─".repeat(50)));
-        } catch (error) {
-          console.log(
-            chalk.red(
-              `Failed to fetch details for note ${note.id}: ${error.message}`
-            )
-          );
+          if (options.id) {
+            console.log(chalk.white("ID:"), note.id || "");
+          }
+          if (options.read) {
+            console.log(
+              chalk.white("Read Permission:"),
+              note.readPermission || ""
+            );
+          }
+          if (options.write) {
+            console.log(
+              chalk.white("Write Permission:"),
+              note.writePermission || ""
+            );
+          }
         }
+        console.log(chalk.gray("─".repeat(50)));
       }
     } else {
       // 检查是否有任何选项被指定
